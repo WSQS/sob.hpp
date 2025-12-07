@@ -2,6 +2,7 @@
 #include <sstream>
 #include <iostream>
 #include <string_view>
+#include <cassert>
 
 template <class T>
 constexpr std::string_view type_name()
@@ -33,17 +34,33 @@ constexpr std::string_view type_name()
 namespace sopho
 {
 
+    enum class BuildType
+    {
+        CXX
+    };
+
     template <typename T>
     struct BuildTarget : public T
     {
         void build()
         {
-            std::stringstream ss{};
-            for (const auto &arg : this->args)
+            std::string command{};
+            switch (this->build_type)
             {
-                ss << arg << " ";
+            case BuildType::CXX:
+            {
+                std::stringstream ss{};
+                for (const auto &arg : this->args)
+                {
+                    ss << arg << " ";
+                }
+                command = ss.str();
             }
-            auto command = ss.str();
+            break;
+            default:
+                assert(!"Unknowen Build Type");
+                break;
+            }
             std::system(command.data());
             std::cout << type_name<T>() << " finished" << std::endl;
         }
