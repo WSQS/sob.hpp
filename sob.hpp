@@ -4,7 +4,7 @@
 #include <sstream>
 #include <string_view>
 #include <tuple>
-
+#include "static_string.hpp"
 
 template <class T>
 constexpr std::string_view type_name()
@@ -32,6 +32,8 @@ constexpr std::string_view type_name()
     return "unknown";
 #endif
 }
+
+#pragma message "Hello, from Sopho"
 
 namespace sopho
 {
