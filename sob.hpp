@@ -1,8 +1,10 @@
 #pragma once
-#include <sstream>
-#include <iostream>
-#include <string_view>
 #include <cassert>
+#include <iostream>
+#include <sstream>
+#include <string_view>
+#include <tuple>
+
 
 template <class T>
 constexpr std::string_view type_name()
@@ -33,6 +35,32 @@ constexpr std::string_view type_name()
 
 namespace sopho
 {
+    template <typename T>
+    struct BuildTarget;
+    // Generic template declaration
+    template <typename DepTuple>
+    struct DepRunner;
+
+    // Specialization for std::tuple<Deps...>
+    template <typename... Deps>
+    struct DepRunner<std::tuple<Deps...>>
+    {
+        static void build()
+        {
+            // Build each dependency in order
+            (BuildTarget<Deps>{}.build(), ...);
+        }
+    };
+
+    // Specialization for empty tuple
+    template <>
+    struct DepRunner<std::tuple<>>
+    {
+        static void build()
+        {
+            // No dependencies, do nothing
+        }
+    };
 
     enum class BuildType
     {
@@ -42,27 +70,29 @@ namespace sopho
     template <typename T>
     struct BuildTarget : public T
     {
-        void build()
+        static void build()
         {
+            DepRunner<typename T::Dependent>::build();
             std::string command{};
-            switch (this->build_type)
+            switch (T::build_type)
             {
             case BuildType::CXX:
-            {
-                std::stringstream ss{};
-                for (const auto &arg : this->args)
                 {
-                    ss << arg << " ";
+                    std::stringstream ss{};
+                    for (const auto& arg : T::args)
+                    {
+                        ss << arg << " ";
+                    }
+                    command = ss.str();
                 }
-                command = ss.str();
-            }
-            break;
+                break;
             default:
                 assert(!"Unknowen Build Type");
                 break;
             }
+            std::cout << type_name<T>() << ":" << command << std::endl;
             std::system(command.data());
-            std::cout << type_name<T>() << " finished" << std::endl;
+            std::cout << type_name<T>() << ":finished" << std::endl;
         }
     };
-}
+} // namespace sopho
