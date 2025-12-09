@@ -36,6 +36,27 @@ constexpr std::string_view type_name()
 
 namespace sopho
 {
+    namespace detail
+    {
+
+        // Declaration: Map takes a Tuple type and a Mapper template
+        template <typename Tuple, template <typename> class Mapper>
+        struct MapImpl;
+
+        // Specialization: Unpack the tuple types (Ts...), apply Mapper to each, repack.
+        template <typename... Ts, template <typename> class Mapper>
+        struct MapImpl<std::tuple<Ts...>, Mapper>
+        {
+            // The "return value" of a metafunction is usually defined as 'type'
+            using type = std::tuple<Mapper<Ts>...>;
+        };
+    } // namespace
+
+    // Helper alias for cleaner syntax (C++14 style aliases)
+    template <typename Tuple, template <typename> class Mapper>
+    using Map = typename detail::MapImpl<Tuple, Mapper>::type;
+
+
     // Generic template declaration
     template <typename Tuple, template <typename> class Policy>
     struct TupleExpander;
@@ -88,15 +109,15 @@ namespace sopho
             static void execute() { CxxBuilder<Target>::build(); }
         };
 
+        template <size_t Size>
+        constexpr static auto source_to_target(StaticString<Size> source)
+        {
+            return source.template strip_suffix<4>().append(Context::obj_postfix);
+        }
 
         template <typename Target>
         struct CxxBuilder
         {
-            template <size_t Size>
-            constexpr static auto source_to_target(StaticString<Size> source)
-            {
-                return source.template strip_suffix<4>().append(Context::obj_postfix);
-            }
 
             template <typename Tuple, size_t... Is>
             constexpr static void append_deps_impl(std::stringstream& ss, std::index_sequence<Is...>)
