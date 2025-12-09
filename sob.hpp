@@ -76,22 +76,13 @@ namespace sopho
         {
             DepRunner<typename T::Dependent>::build();
             std::string command{};
-            switch (T::build_type)
+            std::stringstream ss{};
+            for (const auto& arg : T::args)
             {
-            case BuildType::CXX:
-                {
-                    std::stringstream ss{};
-                    for (const auto& arg : T::args)
-                    {
-                        ss << arg << " ";
-                    }
-                    command = ss.str();
-                }
-                break;
-            default:
-                assert(!"Unknowen Build Type");
-                break;
+                ss << arg << " ";
             }
+            command = ss.str();
+
             std::cout << type_name<T>() << ":" << command << std::endl;
             std::system(command.data());
             std::cout << type_name<T>() << ":finished" << std::endl;

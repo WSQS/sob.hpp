@@ -36,13 +36,11 @@ struct Cxx_Source : public T
 
 struct MainSource
 {
-    static constexpr sopho::BuildType build_type{sopho::BuildType::CXX};
     using Dependent = std::tuple<>;
     static constexpr sopho::StaticString source{"main.cpp"};
 };
 struct Main
 {
-    static constexpr sopho::BuildType build_type{sopho::BuildType::CXX};
     using Dependent = std::tuple<Cxx_Source<MainSource>>;
     static constexpr std::array<const char*, 4> args{"g++", "main.o", "-o", "main"};
 };
