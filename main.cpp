@@ -1,6 +1,8 @@
 #include <array>
+#include <string_view>
 #include <tuple>
 #include "sob.hpp"
+#include "static_string.hpp"
 
 #ifdef _MSVC_LANG
 #define SOPHO_CPP_VER _MSVC_LANG
@@ -26,12 +28,10 @@ constexpr const char* get_cpp_standard_name()
     return "Unknown/Pre-standard";
 }
 
-template <typename T>
-struct Cxx_Source : public T
+struct CxxContext
 {
-    static constexpr sopho::StaticString suffix{".o"};
-    static constexpr sopho::StaticString target{T::source.template strip_suffix<4>()};
-    static constexpr std::array<std::string_view, 5> args{"g++", "-c", T::source.view(), "-o", target.view()};
+    static constexpr std::string_view cxx{"g++"};
+    static constexpr sopho::StaticString obj_postfix{".o"};
 };
 
 struct MainSource
@@ -41,14 +41,14 @@ struct MainSource
 };
 struct Main
 {
-    using Dependent = std::tuple<Cxx_Source<MainSource>>;
-    static constexpr std::array<const char*, 4> args{"g++", "main.o", "-o", "main"};
+    using Dependent = std::tuple<MainSource>;
+    static constexpr sopho::StaticString target{"main"};
 };
 
 
 int main()
 {
     std::cout << get_cpp_standard_name() << std::endl;
-    sopho::BuildTarget<Main>::build();
+    sopho::CxxToolchain<CxxContext>::CxxBuilder<Main>::build();
     return 0;
 }

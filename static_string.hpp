@@ -55,6 +55,22 @@ namespace sopho
 
             return result;
         }
+
+        template <std::size_t M>
+        constexpr StaticString<Size + M> append(StaticString<M> suffix) const
+        {
+            StaticString<Size + M> result{};
+            for (std::size_t i = 0; i < Size; ++i)
+            {
+                result.raw[i] = raw[i];
+            }
+            for (std::size_t i = 0; i < M; ++i)
+            {
+                result.raw[i + Size] = suffix[i];
+            }
+
+            return result;
+        }
     };
     template <std::size_t N>
     StaticString(const char (&)[N]) -> StaticString<N - 1>;
