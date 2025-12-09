@@ -43,23 +43,9 @@ namespace sopho
         }
 
         template <std::size_t M>
-        constexpr StaticString<Size - M> strip_suffix(const StaticString<M>& suffix) const
+        constexpr StaticString<Size - M> strip_suffix() const
         {
             static_assert(M <= Size, "Suffix is longer than the string itself");
-
-            bool match = true;
-            for (std::size_t i = 0; i < M; ++i)
-            {
-                if (raw[Size - M + i] != suffix[i])
-                {
-                    match = false;
-                    break;
-                }
-            }
-
-            if (!match)
-            {
-            }
 
             StaticString<Size - M> result{};
             for (std::size_t i = 0; i < Size - M; ++i)

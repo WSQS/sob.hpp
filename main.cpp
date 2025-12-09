@@ -30,7 +30,7 @@ template <typename T>
 struct Cxx_Source : public T
 {
     static constexpr sopho::StaticString suffix{".o"};
-    static constexpr sopho::StaticString target{T::source.strip_suffix(sopho::StaticString(".cpp"))};
+    static constexpr sopho::StaticString target{T::source.template strip_suffix<4>()};
     static constexpr std::array<std::string_view, 5> args{"g++", "-c", T::source.view(), "-o", target.view()};
 };
 
