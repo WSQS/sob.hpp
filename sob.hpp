@@ -80,33 +80,6 @@ namespace sopho
     template <template <typename, typename> class Folder, typename Tuple, typename Value>
     using Foldl = typename detail::FoldlImpl<Folder, Tuple, Value>::type;
 
-
-    // Generic template declaration
-    template <template <typename> class Policy, typename Tuple>
-    struct TupleExpander;
-
-    // Specialization for std::tuple<Deps...>
-    template <template <typename> class Policy, typename... Tuple>
-    struct TupleExpander<Policy, std::tuple<Tuple...>>
-    {
-        static void execute()
-        {
-            // Build each dependency in order
-            (Policy<Tuple>::execute(), ...);
-        }
-    };
-
-    // Specialization for empty tuple
-    template <template <typename> class Policy>
-    struct TupleExpander<Policy, std::tuple<>>
-    {
-        static void execute()
-        {
-            // No dependencies, do nothing
-        }
-    };
-
-
     template <typename T, typename = void>
     struct has_source : std::false_type
     {
