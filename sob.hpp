@@ -154,11 +154,13 @@ namespace sopho
                 static void build() {}
             };
 
+            using DependentBuilder = Foldl<BuildFolder, DumbBuilder, Map<CxxBuilder, typename Target::Dependent>>;
+
 
             static void build()
             {
 
-                Foldl<BuildFolder, DumbBuilder, Map<CxxBuilder, typename Target::Dependent>>::build();
+                DependentBuilder::build();
 
                 std::string command{};
                 std::stringstream ss{};
