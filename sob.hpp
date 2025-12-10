@@ -80,18 +80,27 @@ namespace sopho
     template <template <typename, typename> class Folder, typename Tuple, typename Value>
     using Foldl = typename detail::FoldlImpl<Folder, Tuple, Value>::type;
 
-    template <typename T, typename = void>
-    struct has_source : std::false_type
+    // Generic detection idiom core
+    template <typename, template <typename> class, typename = void>
+    struct is_detected : std::false_type
     {
     };
 
-    template <typename T>
-    struct has_source<T, std::void_t<decltype(T::source)>> : std::true_type
+    template <typename T, template <typename> class Op>
+    struct is_detected<T, Op, std::void_t<Op<T>>> : std::true_type
     {
     };
 
+    template <typename T, template <typename> class Op>
+    inline constexpr bool is_detected_v = is_detected<T, Op>::value;
+
+    // Expression template: get type of 'T::source' (works for static and non-static)
     template <typename T>
-    inline constexpr bool has_source_v = has_source<T>::value;
+    using detect_source = decltype(std::declval<T&>().source);
+
+    // Final trait: has_source_v<T>
+    template <typename T>
+    inline constexpr bool has_source_v = is_detected_v<T, detect_source>;
 
     template <typename Context>
     struct CxxToolchain
