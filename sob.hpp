@@ -50,11 +50,35 @@ namespace sopho
             // The "return value" of a metafunction is usually defined as 'type'
             using type = std::tuple<Mapper<Ts>...>;
         };
-    } // namespace
+    } // namespace detail
 
     // Helper alias for cleaner syntax (C++14 style aliases)
     template <typename Tuple, template <typename> class Mapper>
     using Map = typename detail::MapImpl<Tuple, Mapper>::type;
+
+    namespace detail
+    {
+        template <template <typename, typename> class Folder, typename Tuple, typename Value>
+        struct FoldlImpl;
+
+        template <typename T, typename... Ts, template <typename, typename> class Folder, typename Value>
+        struct FoldlImpl<Folder, std::tuple<T, Ts...>, Value>
+        {
+            // The "return value" of a metafunction is usually defined as 'type'
+            using type = FoldlImpl<Folder, Ts..., Folder<Value, T>>;
+        };
+
+        template <template <typename, typename> class Folder, typename Value>
+        struct FoldlImpl<Folder, std::tuple<>, Value>
+        {
+            // The "return value" of a metafunction is usually defined as 'type'
+            using type = Value;
+        };
+
+    } // namespace detail
+
+    template <template <typename, typename> class Folder, typename Tuple, typename Value>
+    using Foldl = typename detail::FoldlImpl<Folder, Tuple, Value>;
 
 
     // Generic template declaration
@@ -138,6 +162,8 @@ namespace sopho
 
             static void build()
             {
+
+                Map<typename Target::Dependent, BuilderWrapper>;
 
                 sopho::TupleExpander<typename Target::Dependent, BuilderWrapper>::execute();
                 std::string command{};
