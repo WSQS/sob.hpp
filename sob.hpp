@@ -58,18 +58,18 @@ namespace sopho
 
     namespace detail
     {
-        template <template <typename, typename> class Folder, typename Tuple, typename Value>
+        template <template <typename, typename> typename Folder, typename Value, typename Tuple>
         struct FoldlImpl;
 
-        template <typename T, typename... Ts, template <typename, typename> class Folder, typename Value>
-        struct FoldlImpl<Folder, std::tuple<T, Ts...>, Value>
+        template <template <typename, typename> typename Folder, typename Value, typename T, typename... Ts>
+        struct FoldlImpl<Folder, Value, std::tuple<T, Ts...>>
         {
             // The "return value" of a metafunction is usually defined as 'type'
-            using type = FoldlImpl<Folder, Ts..., Folder<Value, T>>;
+            using type = typename FoldlImpl<Folder, typename Folder<Value, T>::type, std::tuple<Ts...>>::type;
         };
 
-        template <template <typename, typename> class Folder, typename Value>
-        struct FoldlImpl<Folder, std::tuple<>, Value>
+        template <template <typename, typename> typename Folder, typename Value>
+        struct FoldlImpl<Folder, Value, std::tuple<>>
         {
             // The "return value" of a metafunction is usually defined as 'type'
             using type = Value;
@@ -78,7 +78,7 @@ namespace sopho
     } // namespace detail
 
     template <template <typename, typename> class Folder, typename Tuple, typename Value>
-    using Foldl = typename detail::FoldlImpl<Folder, Tuple, Value>;
+    using Foldl = typename detail::FoldlImpl<Folder, Tuple, Value>::type;
 
 
     // Generic template declaration
@@ -127,12 +127,6 @@ namespace sopho
         template <typename Target>
         struct CxxBuilder;
 
-        template <typename Target>
-        struct BuilderWrapper
-        {
-            static void execute() { CxxBuilder<Target>::build(); }
-        };
-
         template <size_t Size>
         constexpr static auto source_to_target(StaticString<Size> source)
         {
@@ -159,13 +153,31 @@ namespace sopho
                 }
             }
 
+            template <typename L, typename R>
+            struct Folder
+            {
+                struct Builder
+                {
+                    static void build()
+                    {
+                        L::build();
+                        R::build();
+                    }
+                };
+                using type = Builder;
+            };
+
+            struct DumbBuilder
+            {
+                static void build() {}
+            };
+
 
             static void build()
             {
 
-                Map<BuilderWrapper, typename Target::Dependent> a{};
+                Foldl<Folder, DumbBuilder, Map<CxxBuilder, typename Target::Dependent>>::build();
 
-                sopho::TupleExpander<BuilderWrapper, typename Target::Dependent>::execute();
                 std::string command{};
                 std::stringstream ss{};
                 ss << Context::cxx;
