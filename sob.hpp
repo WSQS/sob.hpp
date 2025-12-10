@@ -119,22 +119,6 @@ namespace sopho
         struct CxxBuilder
         {
 
-            template <typename Tuple, size_t... Is>
-            constexpr static void append_deps_impl(std::stringstream& ss, std::index_sequence<Is...>)
-            {
-                ((ss << " " << source_to_target(std::tuple_element_t<Is, Tuple>::source).view()), ...);
-            }
-
-            constexpr static void append_dependencies_artifacts(std::stringstream& ss)
-            {
-                using DepTuple = typename Target::Dependent;
-                constexpr size_t Size = std::tuple_size_v<DepTuple>;
-                if constexpr (Size > 0)
-                {
-                    append_deps_impl<DepTuple>(ss, std::make_index_sequence<Size>{});
-                }
-            }
-
             template <typename L, typename R>
             struct BuildFolder
             {
@@ -156,10 +140,32 @@ namespace sopho
 
             using DependentBuilder = Foldl<BuildFolder, DumbBuilder, Map<CxxBuilder, typename Target::Dependent>>;
 
+            template <typename T>
+            struct SourceToTarget
+            {
+                constexpr static auto target = source_to_target(T::source);
+            };
+
+            template <typename L, typename R>
+            struct TargetStringFolder
+            {
+                struct TargetString
+                {
+                    static constexpr auto target = L::target.append(StaticString(" ")).append(R::target);
+                };
+                using type = TargetString;
+            };
+
+            struct DumbTargetString
+            {
+                static constexpr StaticString target{""};
+            };
+
+            using DependentNameCollector =
+                Foldl<TargetStringFolder, DumbTargetString, Map<SourceToTarget, typename Target::Dependent>>;
 
             static void build()
             {
-
                 DependentBuilder::build();
 
                 std::string command{};
@@ -177,7 +183,7 @@ namespace sopho
                     static_assert(std::tuple_size_v<typename Target::Dependent> > 0,
                                   "Link target must have dependencies (object files)");
 
-                    append_dependencies_artifacts(ss);
+                    ss << DependentNameCollector::target.view();
                     ss << " -o " << Target::target.view();
                 }
 
