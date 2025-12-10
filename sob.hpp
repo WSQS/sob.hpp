@@ -39,13 +39,13 @@ namespace sopho
     namespace detail
     {
 
-        // Declaration: Map takes a Tuple type and a Mapper template
-        template <typename Tuple, template <typename> class Mapper>
+        // Declaration: Map takes a Mapper template and a Tuple type
+        template <template <typename> class Mapper, typename Tuple>
         struct MapImpl;
 
         // Specialization: Unpack the tuple types (Ts...), apply Mapper to each, repack.
-        template <typename... Ts, template <typename> class Mapper>
-        struct MapImpl<std::tuple<Ts...>, Mapper>
+        template <template <typename> class Mapper, typename... Ts>
+        struct MapImpl<Mapper, std::tuple<Ts...>>
         {
             // The "return value" of a metafunction is usually defined as 'type'
             using type = std::tuple<Mapper<Ts>...>;
@@ -53,8 +53,8 @@ namespace sopho
     } // namespace detail
 
     // Helper alias for cleaner syntax (C++14 style aliases)
-    template <typename Tuple, template <typename> class Mapper>
-    using Map = typename detail::MapImpl<Tuple, Mapper>::type;
+    template <template <typename> class Mapper, typename Tuple>
+    using Map = typename detail::MapImpl<Mapper, Tuple>::type;
 
     namespace detail
     {
@@ -82,12 +82,12 @@ namespace sopho
 
 
     // Generic template declaration
-    template <typename Tuple, template <typename> class Policy>
+    template <template <typename> class Policy, typename Tuple>
     struct TupleExpander;
 
     // Specialization for std::tuple<Deps...>
-    template <typename... Tuple, template <typename> class Policy>
-    struct TupleExpander<std::tuple<Tuple...>, Policy>
+    template <template <typename> class Policy, typename... Tuple>
+    struct TupleExpander<Policy, std::tuple<Tuple...>>
     {
         static void execute()
         {
@@ -98,7 +98,7 @@ namespace sopho
 
     // Specialization for empty tuple
     template <template <typename> class Policy>
-    struct TupleExpander<std::tuple<>, Policy>
+    struct TupleExpander<Policy, std::tuple<>>
     {
         static void execute()
         {
@@ -163,9 +163,9 @@ namespace sopho
             static void build()
             {
 
-                Map<typename Target::Dependent, BuilderWrapper>;
+                Map<BuilderWrapper, typename Target::Dependent> a{};
 
-                sopho::TupleExpander<typename Target::Dependent, BuilderWrapper>::execute();
+                sopho::TupleExpander<BuilderWrapper, typename Target::Dependent>::execute();
                 std::string command{};
                 std::stringstream ss{};
                 ss << Context::cxx;
