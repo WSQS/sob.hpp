@@ -136,7 +136,7 @@ namespace sopho
             }
 
             template <typename L, typename R>
-            struct Folder
+            struct BuildFolder
             {
                 struct Builder
                 {
@@ -158,7 +158,7 @@ namespace sopho
             static void build()
             {
 
-                Foldl<Folder, DumbBuilder, Map<CxxBuilder, typename Target::Dependent>>::build();
+                Foldl<BuildFolder, DumbBuilder, Map<CxxBuilder, typename Target::Dependent>>::build();
 
                 std::string command{};
                 std::stringstream ss{};
