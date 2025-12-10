@@ -32,6 +32,7 @@ struct CxxContext
 {
     static constexpr std::string_view cxx{"g++"};
     static constexpr sopho::StaticString obj_postfix{".o"};
+    static constexpr sopho::StaticString build_prefix{"build/"};
 };
 
 struct MainSource

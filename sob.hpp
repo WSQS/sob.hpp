@@ -1,10 +1,13 @@
 #pragma once
 #include <cassert>
 #include <cstddef>
+#include <cstdlib>
 #include <iostream>
 #include <sstream>
 #include <string_view>
 #include <tuple>
+#include <type_traits>
+#include <utility>
 #include "static_string.hpp"
 
 template <class T>
@@ -112,7 +115,7 @@ namespace sopho
         template <size_t Size>
         constexpr static auto source_to_target(StaticString<Size> source)
         {
-            return source.template strip_suffix<4>().append(Context::obj_postfix);
+            return Context::build_prefix.append(source.template strip_suffix<4>().append(Context::obj_postfix));
         }
 
         template <typename Target>
