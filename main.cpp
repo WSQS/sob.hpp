@@ -1,8 +1,8 @@
 #include <array>
 #include <string_view>
 #include <tuple>
+#include "file_generator.hpp"
 #include "sob.hpp"
-#include "static_string.hpp"
 
 #ifdef _MSVC_LANG
 #define SOPHO_CPP_VER _MSVC_LANG
@@ -49,6 +49,7 @@ struct Main
 
 int main()
 {
+    sopho::single_header_generator("sob.hpp");
     std::cout << get_cpp_standard_name() << std::endl;
     sopho::CxxToolchain<CxxContext>::CxxBuilder<Main>::build();
     return 0;
