@@ -79,6 +79,11 @@ namespace sopho
     std::vector<std::string_view> collect_file(std::string_view file_path, Context& context)
     {
         std::vector<std::string_view> result{};
+
+        std::string file_name_comment = "// " + std::string(file_path);
+        context.file_content.emplace_back(file_name_comment);
+        result.emplace_back(context.file_content.back());
+
         std::filesystem::path fs_path = file_path;
         assert(std::filesystem::exists(fs_path));
 
