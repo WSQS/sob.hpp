@@ -70,6 +70,7 @@ namespace sopho
 
     struct Context
     {
+        std::filesystem::path include_path{};
         std::vector<std::string> file_content{};
         std::set<std::string_view> std_header{};
     };
@@ -79,6 +80,7 @@ namespace sopho
     {
         std::vector<std::string_view> result{};
         std::filesystem::path fs_path = file_path;
+        std::cout << file_path << std::endl;
         assert(std::filesystem::exists(fs_path));
 
         context.file_content.emplace_back(read_file(fs_path));
@@ -122,8 +124,13 @@ namespace sopho
                     line_content = line_content.substr(1);
                     auto index = line_content.find('"');
                     assert(index != std::string_view::npos);
-                    auto file_name = line_content.substr(0, index);
-                    auto file_content = collect_file(file_name, context);
+                    std::string file_name{line_content.substr(0, index)};
+                    std::filesystem::path new_fs_path = fs_path.parent_path() / file_name;
+                    if (!std::filesystem::exists(new_fs_path))
+                    {
+                        new_fs_path = context.include_path / file_name;
+                    }
+                    auto file_content = collect_file(std::string_view(new_fs_path.string()), context);
                     result.insert(result.end(), file_content.begin(), file_content.end());
                 }
                 else
@@ -152,8 +159,11 @@ namespace sopho
     void single_header_generator(std::string_view file_path)
     {
         Context context{};
+        std::filesystem::path fs_path = file_path;
+        assert(std::filesystem::exists(fs_path));
+        context.include_path = fs_path.parent_path();
         auto lines = collect_file(file_path, context);
-        std::ofstream out("test.hpp", std::ios::binary);
+        std::ofstream out("sob.hpp", std::ios::binary);
         assert(out.is_open());
 
         for (auto sv : lines)
