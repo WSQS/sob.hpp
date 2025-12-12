@@ -3,9 +3,11 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
+
 
 namespace sopho
 {
@@ -69,6 +71,7 @@ namespace sopho
     struct Context
     {
         std::vector<std::string> file_content{};
+        std::set<std::string_view> std_header{};
     };
 
 
@@ -102,6 +105,15 @@ namespace sopho
                 line_content = ltrim(line_content);
                 if (line_content[0] == '<')
                 {
+                    line_content = line_content.substr(1);
+                    auto index = line_content.find('>');
+                    assert(index != std::string_view::npos);
+                    auto file_name = line_content.substr(0, index);
+                    if (context.std_header.find(file_name) != context.std_header.end())
+                    {
+                        continue;
+                    }
+                    context.std_header.emplace(file_name);
                     result.emplace_back(line);
                     continue;
                 }
