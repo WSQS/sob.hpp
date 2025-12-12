@@ -74,8 +74,8 @@ namespace sopho
     struct FileEntry
     {
         std::string name{};
-        std::uint32_t size{};
-        std::size_t hash{};
+        std::uint64_t size{};
+        std::uint64_t hash{};
         std::unique_ptr<std::string> content{};
 
         friend bool operator<(const FileEntry& a, const FileEntry& b)
@@ -96,9 +96,9 @@ namespace sopho
     {
         auto file_content = read_file(fs_path);
         return FileEntry{.name = fs_path.filename(),
-                         .size = static_cast<std::uint32_t>(file_content.size()),
+                         .size = file_content.size(),
                          .hash = std::hash<std::string>{}(file_content),
-                         .content = std::make_unique<std::string>(file_content)};
+                         .content = std::make_unique<std::string>(std::move(file_content))};
     }
 
     struct Context
@@ -120,8 +120,12 @@ namespace sopho
 
         std::filesystem::path fs_path = file_path;
         assert(std::filesystem::exists(fs_path));
+        auto [iter, inserted] = context.file_entries.emplace(make_entry(fs_path));
 
-        auto [iter, flag] = context.file_entries.emplace(make_entry(fs_path));
+        if (!inserted)
+        {
+            return {};
+        }
 
         auto lines = split_lines(std::string_view(*iter->content));
 
@@ -167,11 +171,6 @@ namespace sopho
                     if (!std::filesystem::exists(new_fs_path))
                     {
                         new_fs_path = context.include_path / file_name;
-                    }
-                    auto new_entry = make_entry(new_fs_path);
-                    if (context.file_entries.find(new_entry) != context.file_entries.end())
-                    {
-                        continue;
                     }
                     auto file_content = collect_file(std::string_view(new_fs_path.string()), context);
                     result.insert(result.end(), file_content.begin(), file_content.end());
