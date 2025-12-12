@@ -80,7 +80,6 @@ namespace sopho
     {
         std::vector<std::string_view> result{};
         std::filesystem::path fs_path = file_path;
-        std::cout << file_path << std::endl;
         assert(std::filesystem::exists(fs_path));
 
         context.file_content.emplace_back(read_file(fs_path));
