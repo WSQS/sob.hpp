@@ -7,6 +7,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <deque>
 
 
 namespace sopho
@@ -71,8 +72,8 @@ namespace sopho
     struct Context
     {
         std::filesystem::path include_path{};
-        std::vector<std::string> file_content{};
-        std::set<std::string_view> std_header{};
+        std::deque<std::string> file_content{};
+        std::set<std::string> std_header{};
     };
 
 
@@ -115,7 +116,7 @@ namespace sopho
                     auto index = line_content.find('>');
                     assert(index != std::string_view::npos);
                     auto file_name = line_content.substr(0, index);
-                    if (context.std_header.find(file_name) != context.std_header.end())
+                    if (context.std_header.find(std::string(file_name)) != context.std_header.end())
                     {
                         continue;
                     }
