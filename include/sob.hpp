@@ -81,8 +81,8 @@ namespace sopho
 
     } // namespace detail
 
-    template <template <typename, typename> class Folder, typename Tuple, typename Value>
-    using Foldl = typename detail::FoldlImpl<Folder, Tuple, Value>::type;
+    template <template <typename, typename> class Folder, typename Value, typename Tuple>
+    using Foldl = typename detail::FoldlImpl<Folder, Value, Tuple>::type;
 
     // Generic detection idiom core
     template <typename, template <typename> class, typename = void>
