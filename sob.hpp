@@ -9,6 +9,7 @@
 #include <type_traits>
 #include <utility>
 #include "static_string.hpp"
+#include "file_generator.hpp"
 
 template <class T>
 constexpr std::string_view type_name()
