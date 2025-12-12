@@ -134,7 +134,7 @@ namespace sopho
                 }
                 else
                 {
-                    assert(!"not a valid header format");
+                    result.emplace_back(line);
                 }
             }
             else if (starts_with(line_content, "pragma"))
