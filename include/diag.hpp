@@ -122,6 +122,7 @@ namespace sopho
             {
                 ss << "name:" << key << " value:" << stack_value_to_string(value) << std::endl;
             }
+            ++size;
         }
     }
 
