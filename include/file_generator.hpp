@@ -118,8 +118,8 @@ namespace sopho
         std::vector<std::string_view> result{};
 
         std::string file_name_comment = "// " + std::string(file_path);
-        context.file_content.emplace_back(file_name_comment);
-        result.emplace_back(context.file_content.back());
+        auto& comment = context.file_content.emplace_back(file_name_comment);
+        result.emplace_back(comment);
 
         std::filesystem::path fs_path = file_path;
         SOPHO_ASSERT(std::filesystem::exists(fs_path), "file not exist ", fs_path.string());
@@ -177,6 +177,7 @@ namespace sopho
                     }
                     auto file_content = collect_file(std::string_view(new_fs_path.string()), context);
                     result.insert(result.end(), file_content.begin(), file_content.end());
+                    result.emplace_back(comment);
                 }
                 else
                 {
