@@ -9,7 +9,7 @@ namespace sopho
     {
 
         // Declaration: Map takes a Mapper template and a Tuple type
-        template <template <typename> class Mapper, typename Tuple>
+        template <template <typename> class Mapper, typename List>
         struct MapImpl;
 
         // Specialization: Unpack the tuple types (Ts...), apply Mapper to each, repack.
@@ -22,12 +22,12 @@ namespace sopho
     } // namespace detail
 
     // Helper alias for cleaner syntax (C++14 style aliases)
-    template <template <typename> class Mapper, typename Tuple>
-    using Map = typename detail::MapImpl<Mapper, Tuple>::type;
+    template <template <typename> class Mapper, typename List>
+    using Map = typename detail::MapImpl<Mapper, List>::type;
 
     namespace detail
     {
-        template <template <typename, typename> typename Folder, typename Value, typename Tuple>
+        template <template <typename, typename> typename Folder, typename Value, typename List>
         struct FoldlImpl;
 
         template <template <typename, typename> typename Folder, typename Value, typename T, typename... Ts>
@@ -46,6 +46,6 @@ namespace sopho
 
     } // namespace detail
 
-    template <template <typename, typename> class Folder, typename Value, typename Tuple>
-    using Foldl = typename detail::FoldlImpl<Folder, Value, Tuple>::type;
+    template <template <typename, typename> class Folder, typename Value, typename List>
+    using Foldl = typename detail::FoldlImpl<Folder, Value, List>::type;
 }
