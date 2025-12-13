@@ -177,6 +177,7 @@ namespace sopho
             {
                 ss << "name:" << key << " value:" << stack_value_to_string(value) << std::endl;
             }
+            ++size;
         }
     }
     [[noreturn]] inline void assert_fail(std::string_view expr, std::string msg, SourceLocation loc)
