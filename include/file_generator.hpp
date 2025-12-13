@@ -95,10 +95,14 @@ namespace sopho
     FileEntry make_entry(std::filesystem::path fs_path)
     {
         auto file_content = read_file(fs_path);
-        return FileEntry{.name = fs_path.filename().string(),
-                         .size = file_content.size(),
-                         .hash = std::hash<std::string>{}(file_content),
-                         .content = std::make_unique<std::string>(std::move(file_content))};
+
+        FileEntry entry{};
+        entry.name = fs_path.filename().string();
+        entry.size = file_content.size();
+        entry.hash = std::hash<std::string>{}(file_content);
+        entry.content = std::make_unique<std::string>(std::move(file_content));
+
+        return entry;
     }
 
     struct Context
