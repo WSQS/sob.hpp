@@ -23,16 +23,16 @@ namespace sopho
         using type = std::reference_wrapper<const T>;
     };
 
-    using StackValueRefrence =
+    using StackValueReference =
         Map<ReferenceWrapper, std::variant<std::int64_t, std::uint64_t, double, std::string, std::filesystem::path>>;
 
     struct StackInfo
     {
         SourceLocation source_location{};
-        std::map<std::string, StackValueRefrence> stack_values{};
+        std::map<std::string, StackValueReference> stack_values{};
     };
 
-    inline std::string stack_value_to_string(const StackValueRefrence& v)
+    inline std::string stack_value_to_string(const StackValueReference& v)
     {
         return std::visit(
             [](const auto& ref) -> std::string
@@ -89,7 +89,7 @@ namespace sopho
     struct StackValue
     {
         std::string name{};
-        StackValue(std::string value_name, StackValueRefrence value)
+        StackValue(std::string value_name, StackValueReference value)
         {
             name = value_name;
             StackInfoInstance::get().stack_infos.front().stack_values.insert_or_assign(value_name, value);
