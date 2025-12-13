@@ -112,7 +112,7 @@ namespace sopho
 
     void dump_callstack(std::ostringstream& ss)
     {
-        auto infos = StackInfoInstance::get().stack_infos;
+        auto& infos = StackInfoInstance::get().stack_infos;
         std::uint32_t size{0};
         for (const auto& info : infos)
         {
