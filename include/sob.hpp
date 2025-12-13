@@ -10,6 +10,7 @@
 #include <utility>
 #include "static_string.hpp"
 #include "file_generator.hpp"
+#include "meta.hpp"
 
 template <class T>
 constexpr std::string_view type_name()
@@ -40,50 +41,6 @@ constexpr std::string_view type_name()
 
 namespace sopho
 {
-    namespace detail
-    {
-
-        // Declaration: Map takes a Mapper template and a Tuple type
-        template <template <typename> class Mapper, typename Tuple>
-        struct MapImpl;
-
-        // Specialization: Unpack the tuple types (Ts...), apply Mapper to each, repack.
-        template <template <typename> class Mapper, typename... Ts>
-        struct MapImpl<Mapper, std::tuple<Ts...>>
-        {
-            // The "return value" of a metafunction is usually defined as 'type'
-            using type = std::tuple<Mapper<Ts>...>;
-        };
-    } // namespace detail
-
-    // Helper alias for cleaner syntax (C++14 style aliases)
-    template <template <typename> class Mapper, typename Tuple>
-    using Map = typename detail::MapImpl<Mapper, Tuple>::type;
-
-    namespace detail
-    {
-        template <template <typename, typename> typename Folder, typename Value, typename Tuple>
-        struct FoldlImpl;
-
-        template <template <typename, typename> typename Folder, typename Value, typename T, typename... Ts>
-        struct FoldlImpl<Folder, Value, std::tuple<T, Ts...>>
-        {
-            // The "return value" of a metafunction is usually defined as 'type'
-            using type = typename FoldlImpl<Folder, typename Folder<Value, T>::type, std::tuple<Ts...>>::type;
-        };
-
-        template <template <typename, typename> typename Folder, typename Value>
-        struct FoldlImpl<Folder, Value, std::tuple<>>
-        {
-            // The "return value" of a metafunction is usually defined as 'type'
-            using type = Value;
-        };
-
-    } // namespace detail
-
-    template <template <typename, typename> class Folder, typename Value, typename Tuple>
-    using Foldl = typename detail::FoldlImpl<Folder, Value, Tuple>::type;
-
     // Generic detection idiom core
     template <typename, template <typename> class, typename = void>
     struct is_detected : std::false_type
