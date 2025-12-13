@@ -1,7 +1,7 @@
 #pragma once
 
 #include <tuple>
-
+#include <variant>
 
 namespace sopho
 {
@@ -18,6 +18,13 @@ namespace sopho
         {
             // The "return value" of a metafunction is usually defined as 'type'
             using type = std::tuple<Mapper<Ts>...>;
+        };
+
+        template <template <typename> class Mapper, typename... Ts>
+        struct MapImpl<Mapper, std::variant<Ts...>>
+        {
+            // The "return value" of a metafunction is usually defined as 'type'
+            using type = std::variant<Mapper<Ts>...>;
         };
     } // namespace detail
 
@@ -44,8 +51,22 @@ namespace sopho
             using type = Value;
         };
 
+        template <template <typename, typename> typename Folder, typename Value, typename T, typename... Ts>
+        struct FoldlImpl<Folder, Value, std::variant<T, Ts...>>
+        {
+            // The "return value" of a metafunction is usually defined as 'type'
+            using type = typename FoldlImpl<Folder, typename Folder<Value, T>::type, std::variant<Ts...>>::type;
+        };
+
+        template <template <typename, typename> typename Folder, typename Value>
+        struct FoldlImpl<Folder, Value, std::variant<>>
+        {
+            // The "return value" of a metafunction is usually defined as 'type'
+            using type = Value;
+        };
+
     } // namespace detail
 
     template <template <typename, typename> class Folder, typename Value, typename List>
     using Foldl = typename detail::FoldlImpl<Folder, Value, List>::type;
-}
+} // namespace sopho
