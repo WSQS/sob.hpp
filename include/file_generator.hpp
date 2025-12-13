@@ -11,7 +11,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
-
+#include "diag.hpp"
 namespace sopho
 {
 
@@ -204,9 +204,11 @@ namespace sopho
 
     void single_header_generator(std::string_view file_path)
     {
+        SOPHO_STACK();
         Context context{};
         std::filesystem::path fs_path = file_path;
-        assert(std::filesystem::exists(fs_path));
+        SOPHO_VALUE(fs_path);
+        SOPHO_ASSERT(std::filesystem::exists(fs_path),"file not exist");
         context.include_path = fs_path.parent_path();
         auto lines = collect_file(file_path, context);
         std::ofstream out("sob.hpp", std::ios::binary);

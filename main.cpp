@@ -48,7 +48,7 @@ struct Main
 
 int main()
 {
-    sopho::single_header_generator("sob.hpp");
+    sopho::single_header_generator("include/sob.hpp");
     std::cout << get_cpp_standard_name() << std::endl;
     sopho::CxxToolchain<CxxContext>::CxxBuilder<Main>::build();
     return 0;

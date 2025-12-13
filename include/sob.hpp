@@ -8,9 +8,10 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
-#include "static_string.hpp"
+#include "diag.hpp"
 #include "file_generator.hpp"
 #include "meta.hpp"
+#include "static_string.hpp"
 
 template <class T>
 constexpr std::string_view type_name()
@@ -114,7 +115,7 @@ namespace sopho
                 struct Result
                 {
 
-                constexpr static auto target = source_to_target(T::source);
+                    constexpr static auto target = source_to_target(T::source);
                 };
                 using type = Result;
             };
