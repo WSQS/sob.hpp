@@ -1,4 +1,4 @@
-#include <cassert>
+// include/sob.hpp
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
@@ -7,8 +7,406 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
-#include <array>
+// include/diag.hpp
 #include <cstdint>
+#include <filesystem>
+#include <functional>
+#include <list>
+#include <map>
+#include <string>
+#include <variant>
+// include/meta.hpp
+namespace sopho
+{
+    namespace detail
+    {
+        // Declaration: Map takes a Mapper template and a Tuple type
+        template <template <typename> class Mapper, typename List>
+        struct MapImpl;
+        // Specialization: Unpack the tuple types (Ts...), apply Mapper to each, repack.
+        template <template <typename> class Mapper, typename... Ts>
+        struct MapImpl<Mapper, std::tuple<Ts...>>
+        {
+            // The "return value" of a metafunction is usually defined as 'type'
+            using type = std::tuple<typename Mapper<Ts>::type...>;
+        };
+        template <template <typename> class Mapper, typename... Ts>
+        struct MapImpl<Mapper, std::variant<Ts...>>
+        {
+            // The "return value" of a metafunction is usually defined as 'type'
+            using type = std::variant<typename Mapper<Ts>::type...>;
+        };
+    } // namespace detail
+    // Helper alias for cleaner syntax (C++14 style aliases)
+    template <template <typename> class Mapper, typename List>
+    using Map = typename detail::MapImpl<Mapper, List>::type;
+    namespace detail
+    {
+        template <template <typename, typename> typename Folder, typename Value, typename List>
+        struct FoldlImpl;
+        template <template <typename, typename> typename Folder, typename Value, typename T, typename... Ts>
+        struct FoldlImpl<Folder, Value, std::tuple<T, Ts...>>
+        {
+            // The "return value" of a metafunction is usually defined as 'type'
+            using type = typename FoldlImpl<Folder, typename Folder<Value, T>::type, std::tuple<Ts...>>::type;
+        };
+        template <template <typename, typename> typename Folder, typename Value>
+        struct FoldlImpl<Folder, Value, std::tuple<>>
+        {
+            // The "return value" of a metafunction is usually defined as 'type'
+            using type = Value;
+        };
+        template <template <typename, typename> typename Folder, typename Value, typename T, typename... Ts>
+        struct FoldlImpl<Folder, Value, std::variant<T, Ts...>>
+        {
+            // The "return value" of a metafunction is usually defined as 'type'
+            using type = typename FoldlImpl<Folder, typename Folder<Value, T>::type, std::variant<Ts...>>::type;
+        };
+        template <template <typename, typename> typename Folder, typename Value>
+        struct FoldlImpl<Folder, Value, std::variant<>>
+        {
+            // The "return value" of a metafunction is usually defined as 'type'
+            using type = Value;
+        };
+    } // namespace detail
+    template <template <typename, typename> class Folder, typename Value, typename List>
+    using Foldl = typename detail::FoldlImpl<Folder, Value, List>::type;
+} // namespace sopho
+// include/diag.hpp
+namespace sopho
+{
+    struct SourceLocation
+    {
+        const char* file_name{};
+        const char* function_name{};
+        std::uint32_t line_number{};
+    };
+    template <typename T>
+    struct ReferenceWrapper
+    {
+        using type = std::reference_wrapper<const T>;
+    };
+    using StackValueRefrence =
+        Map<ReferenceWrapper, std::variant<std::int64_t, std::uint64_t, double, std::string, std::filesystem::path>>;
+    struct StackInfo
+    {
+        SourceLocation source_location{};
+        std::map<std::string, StackValueRefrence> stack_values{};
+    };
+    inline std::string stack_value_to_string(const StackValueRefrence& v)
+    {
+        return std::visit(
+            [](const auto& ref) -> std::string
+            {
+                const auto& x = ref.get();
+                using T = std::decay_t<decltype(x)>;
+                if constexpr (std::is_same_v<T, std::string>)
+                {
+                    return x;
+                }
+                else if constexpr (std::is_same_v<T, std::filesystem::path>)
+                {
+                    // Note: string() is platform/native encoding; for cross-platform stable output you might prefer
+                    // generic_u8string().
+                    return x.string();
+                }
+                else
+                {
+                    // Covers int64_t / uint64_t / double
+                    return std::to_string(x);
+                }
+            },
+            v);
+    }
+    struct StackInfoInstance
+    {
+        std::list<StackInfo> stack_infos;
+        static StackInfoInstance& get()
+        {
+            static thread_local StackInfoInstance instance{};
+            return instance;
+        }
+    };
+    struct StackScope
+    {
+        StackScope(const char* file_name, const char* function_name, std::uint32_t line_number)
+        {
+            StackInfo stack_info{};
+            stack_info.source_location.file_name = file_name;
+            stack_info.source_location.function_name = function_name;
+            stack_info.source_location.line_number = line_number;
+            StackInfoInstance::get().stack_infos.emplace_front(stack_info);
+        }
+        ~StackScope() { StackInfoInstance::get().stack_infos.pop_front(); }
+        StackScope(const StackScope&) = delete;
+        StackScope& operator=(const StackScope&) = delete;
+        StackScope(StackScope&&) = delete;
+        StackScope& operator=(StackScope&&) = delete;
+    };
+    struct StackValue
+    {
+        std::string name{};
+        StackValue(std::string value_name, StackValueRefrence value)
+        {
+            name = value_name;
+            StackInfoInstance::get().stack_infos.front().stack_values.insert_or_assign(value_name, value);
+        }
+        ~StackValue() { StackInfoInstance::get().stack_infos.front().stack_values.erase(name); }
+        StackValue(const StackValue&) = delete;
+        StackValue& operator=(const StackValue&) = delete;
+        StackValue(StackValue&&) = delete;
+        StackValue& operator=(StackValue&&) = delete;
+    };
+    // Build message only on failure path.
+    template <class... Args>
+    inline std::string build_message(Args&&... args)
+    {
+        std::ostringstream os;
+        (os << ... << std::forward<Args>(args));
+        return os.str();
+    }
+    void dump_callstack(std::ostringstream& ss)
+    {
+        auto infos = StackInfoInstance::get().stack_infos;
+        std::uint32_t size{0};
+        for (const auto& info : infos)
+        {
+            ss << "stack" << size << ": " << info.source_location.file_name << ":" << info.source_location.line_number
+               << "@" << info.source_location.function_name << std::endl;
+            for (const auto& [key, value] : info.stack_values)
+            {
+                ss << "name:" << key << " value:" << stack_value_to_string(value) << std::endl;
+            }
+        }
+    }
+    [[noreturn]] inline void assert_fail(std::string_view expr, std::string msg, SourceLocation loc)
+    {
+        std::ostringstream ss;
+        ss << "SOPHO_ASSERT failed: (" << expr << ")\n";
+        if (!msg.empty())
+        {
+            ss << "Message: " << msg << "\n";
+        }
+        ss << "Location: " << (loc.file_name ? loc.file_name : "<unknown>") << ":" << loc.line_number << " @ "
+           << (loc.function_name ? loc.function_name : "<unknown>") << "\n";
+        dump_callstack(ss);
+        std::cerr << ss.str();
+        std::cerr.flush();
+        std::abort();
+    }
+#define JOIN2(a, b) a##b
+#define SOPHO_DETAIL_JOIN2(a, b) JOIN2(a, b)
+#define SOPHO_STACK()                                                                                                  \
+    StackScope SOPHO_DETAIL_JOIN2(_sopho_stack_scope_, __COUNTER__) { __FILE__, __func__, __LINE__ }
+#define SOPHO_VALUE(value)                                                                                             \
+    StackValue SOPHO_DETAIL_JOIN2(_sopho_stack_value_, __COUNTER__) { std::string(#value), value }
+#define SOPHO_SOURCE_LOCATION                                                                                          \
+    ::sopho::SourceLocation { __FILE__, __func__, static_cast<std::uint32_t>(__LINE__) }
+// expr + variadic msg parts (at least one msg token is required by your convention)
+#define SOPHO_ASSERT(expr, ...)                                                                                        \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(expr))                                                                                                   \
+        {                                                                                                              \
+            ::sopho::assert_fail(#expr, ::sopho::build_message(__VA_ARGS__), SOPHO_SOURCE_LOCATION);                   \
+        }                                                                                                              \
+    }                                                                                                                  \
+    while (0)
+} // namespace sopho
+// include/sob.hpp
+// include/file_generator.hpp
+#include <deque>
+#include <fstream>
+#include <memory>
+#include <set>
+#include <vector>
+// include/file_generator.hpp
+namespace sopho
+{
+    std::string read_file(std::filesystem::path fs_path)
+    {
+        std::ifstream file_stream(fs_path, std::ios::binary);
+        SOPHO_ASSERT(file_stream.is_open(), "open file failed, file name:", fs_path.string());
+        const auto file_size = std::filesystem::file_size(fs_path);
+        std::string content;
+        content.resize(file_size);
+        file_stream.read(content.data(), file_size);
+        return content;
+    }
+    std::vector<std::string_view> split_lines(std::string_view str)
+    {
+        std::vector<std::string_view> result;
+        size_t start = 0;
+        while (start < str.size())
+        {
+            size_t end = str.find('\n', start);
+            if (end == std::string_view::npos)
+            {
+                result.emplace_back(str.substr(start));
+                break;
+            }
+            size_t line_end = end;
+            if (line_end > start && str[line_end - 1] == '\r')
+            {
+                line_end -= 1;
+            }
+            result.emplace_back(str.substr(start, line_end - start));
+            start = end + 1;
+        }
+        return result;
+    }
+    std::string_view ltrim(std::string_view sv)
+    {
+        size_t i = 0;
+        while (i < sv.size() && (sv[i] == ' ' || sv[i] == '\t'))
+        {
+            ++i;
+        }
+        return sv.substr(i);
+    }
+    bool starts_with(std::string_view sv, std::string_view prefix)
+    {
+        return sv.size() >= prefix.size() && sv.compare(0, prefix.size(), prefix) == 0;
+    }
+    struct FileEntry
+    {
+        std::string name{};
+        std::uint64_t size{};
+        std::uint64_t hash{};
+        std::unique_ptr<std::string> content{};
+        friend bool operator<(const FileEntry& a, const FileEntry& b)
+        {
+            if (a.name != b.name)
+                return a.name < b.name;
+            if (a.size != b.size)
+                return a.size < b.size;
+            if (a.hash != b.hash)
+                return a.hash < b.hash;
+            return *a.content < *b.content;
+        }
+    };
+    FileEntry make_entry(std::filesystem::path fs_path)
+    {
+        auto file_content = read_file(fs_path);
+        FileEntry entry{};
+        entry.name = fs_path.filename().string();
+        entry.size = file_content.size();
+        entry.hash = std::hash<std::string>{}(file_content);
+        entry.content = std::make_unique<std::string>(std::move(file_content));
+        return entry;
+    }
+    struct Context
+    {
+        std::filesystem::path include_path{};
+        std::deque<std::string> file_content{};
+        std::set<FileEntry> file_entries{};
+        std::set<std::string> std_header{};
+    };
+    std::vector<std::string_view> collect_file(std::string_view file_path, Context& context)
+    {
+        std::vector<std::string_view> result{};
+        std::string file_name_comment = "// " + std::string(file_path);
+        auto& comment = context.file_content.emplace_back(file_name_comment);
+        result.emplace_back(comment);
+        std::filesystem::path fs_path = file_path;
+        SOPHO_ASSERT(std::filesystem::exists(fs_path), "file not exist ", fs_path.string());
+        auto [iter, inserted] = context.file_entries.emplace(make_entry(fs_path));
+        if (!inserted)
+        {
+            return {};
+        }
+        auto lines = split_lines(std::string_view(*iter->content));
+        for (const auto& line : lines)
+        {
+            auto line_content = ltrim(line);
+            if (line_content.length() == 0)
+            {
+                continue;
+            }
+            if (line_content[0] != '#')
+            {
+                result.emplace_back(line);
+                continue;
+            }
+            line_content = line_content.substr(1);
+            line_content = ltrim(line_content);
+            if (starts_with(line_content, "include"))
+            {
+                line_content = line_content.substr(7);
+                line_content = ltrim(line_content);
+                if (line_content[0] == '<')
+                {
+                    line_content = line_content.substr(1);
+                    auto index = line_content.find('>');
+                    SOPHO_ASSERT(index != std::string_view::npos, "find > failed");
+                    auto file_name = line_content.substr(0, index);
+                    if (context.std_header.find(std::string(file_name)) != context.std_header.end())
+                    {
+                        continue;
+                    }
+                    context.std_header.emplace(file_name);
+                    result.emplace_back(line);
+                    continue;
+                }
+                else if (line_content[0] == '"')
+                {
+                    line_content = line_content.substr(1);
+                    auto index = line_content.find('"');
+                    SOPHO_ASSERT(index != std::string_view::npos, "find \" failed");
+                    std::string file_name{line_content.substr(0, index)};
+                    std::filesystem::path new_fs_path = fs_path.parent_path() / file_name;
+                    if (!std::filesystem::exists(new_fs_path))
+                    {
+                        new_fs_path = context.include_path / file_name;
+                    }
+                    auto file_content = collect_file(std::string_view(new_fs_path.string()), context);
+                    result.insert(result.end(), file_content.begin(), file_content.end());
+                    result.emplace_back(comment);
+                }
+                else
+                {
+                    result.emplace_back(line);
+                }
+            }
+            else if (starts_with(line_content, "pragma"))
+            {
+                line_content = line_content.substr(6);
+                line_content = ltrim(line_content);
+                if (starts_with(line_content, "once"))
+                {
+                    continue;
+                }
+                result.emplace_back(line);
+            }
+            else
+            {
+                result.emplace_back(line);
+            }
+        }
+        return result;
+    }
+    void single_header_generator(std::string_view file_path)
+    {
+        SOPHO_STACK();
+        Context context{};
+        std::filesystem::path fs_path = file_path;
+        SOPHO_VALUE(fs_path);
+        SOPHO_ASSERT(std::filesystem::exists(fs_path), "file not exist");
+        context.include_path = fs_path.parent_path();
+        auto lines = collect_file(file_path, context);
+        std::ofstream out("sob.hpp", std::ios::binary);
+        SOPHO_ASSERT(out.is_open(), "open file failed");
+        for (auto sv : lines)
+        {
+            out.write(sv.data(), sv.size());
+            out.put('\n');
+        }
+    }
+} // namespace sopho
+// include/sob.hpp
+// include/sob.hpp
+// include/static_string.hpp
+#include <array>
 namespace sopho
 {
     template <std::size_t Size>
@@ -75,155 +473,7 @@ namespace sopho
     template <std::size_t N>
     StaticString(const char (&)[N]) -> StaticString<N - 1>;
 } // namespace sopho
-#include <filesystem>
-#include <fstream>
-#include <set>
-#include <string>
-#include <vector>
-namespace sopho
-{
-    std::string read_file(std::filesystem::path fs_path)
-    {
-        std::ifstream file_stream(fs_path, std::ios::binary);
-        assert(file_stream.is_open());
-        const auto file_size = std::filesystem::file_size(fs_path);
-        std::string content;
-        content.resize(file_size);
-        file_stream.read(content.data(), file_size);
-        return content;
-    }
-    std::vector<std::string_view> split_lines(std::string_view str)
-    {
-        std::vector<std::string_view> result;
-        size_t start = 0;
-        while (start < str.size())
-        {
-            size_t end = str.find('\n', start);
-            if (end == std::string_view::npos)
-            {
-                result.emplace_back(str.substr(start));
-                break;
-            }
-            size_t line_end = end;
-            if (line_end > start && str[line_end - 1] == '\r')
-            {
-                line_end -= 1;
-            }
-            result.emplace_back(str.substr(start, line_end - start));
-            start = end + 1;
-        }
-        return result;
-    }
-    std::string_view ltrim(std::string_view sv)
-    {
-        size_t i = 0;
-        while (i < sv.size() && (sv[i] == ' ' || sv[i] == '\t'))
-        {
-            ++i;
-        }
-        return sv.substr(i);
-    }
-    bool starts_with(std::string_view sv, std::string_view prefix)
-    {
-        return sv.size() >= prefix.size() && sv.compare(0, prefix.size(), prefix) == 0;
-    }
-    struct Context
-    {
-        std::filesystem::path include_path{};
-        std::vector<std::string> file_content{};
-        std::set<std::string_view> std_header{};
-    };
-    std::vector<std::string_view> collect_file(std::string_view file_path, Context& context)
-    {
-        std::vector<std::string_view> result{};
-        std::filesystem::path fs_path = file_path;
-        assert(std::filesystem::exists(fs_path));
-        context.file_content.emplace_back(read_file(fs_path));
-        auto lines = split_lines(std::string_view(context.file_content.back()));
-        for (const auto& line : lines)
-        {
-            auto line_content = ltrim(line);
-            if (line_content.length() == 0)
-            {
-                continue;
-            }
-            if (line_content[0] != '#')
-            {
-                result.emplace_back(line);
-                continue;
-            }
-            line_content = line_content.substr(1);
-            line_content = ltrim(line_content);
-            if (starts_with(line_content, "include"))
-            {
-                line_content = line_content.substr(7);
-                line_content = ltrim(line_content);
-                if (line_content[0] == '<')
-                {
-                    line_content = line_content.substr(1);
-                    auto index = line_content.find('>');
-                    assert(index != std::string_view::npos);
-                    auto file_name = line_content.substr(0, index);
-                    if (context.std_header.find(file_name) != context.std_header.end())
-                    {
-                        continue;
-                    }
-                    context.std_header.emplace(file_name);
-                    result.emplace_back(line);
-                    continue;
-                }
-                else if (line_content[0] == '"')
-                {
-                    line_content = line_content.substr(1);
-                    auto index = line_content.find('"');
-                    assert(index != std::string_view::npos);
-                    std::string file_name{line_content.substr(0, index)};
-                    std::filesystem::path new_fs_path = fs_path.parent_path() / file_name;
-                    if (!std::filesystem::exists(new_fs_path))
-                    {
-                        new_fs_path = context.include_path / file_name;
-                    }
-                    auto file_content = collect_file(std::string_view(new_fs_path.string()), context);
-                    result.insert(result.end(), file_content.begin(), file_content.end());
-                }
-                else
-                {
-                    assert(!"not a valid header format");
-                }
-            }
-            else if (starts_with(line_content, "pragma"))
-            {
-                line_content = line_content.substr(6);
-                line_content = ltrim(line_content);
-                if (starts_with(line_content, "once"))
-                {
-                    continue;
-                }
-                result.emplace_back(line);
-            }
-            else
-            {
-                result.emplace_back(line);
-            }
-        }
-        return result;
-    }
-    void single_header_generator(std::string_view file_path)
-    {
-        Context context{};
-        std::filesystem::path fs_path = file_path;
-        assert(std::filesystem::exists(fs_path));
-        context.include_path = fs_path.parent_path();
-        auto lines = collect_file(file_path, context);
-        std::ofstream out("sob.hpp", std::ios::binary);
-        assert(out.is_open());
-        for (auto sv : lines)
-        {
-            out.write(sv.data(), sv.size());
-            out.put('\n');
-        }
-    }
-} // namespace sopho
+// include/sob.hpp
 template <class T>
 constexpr std::string_view type_name()
 {
@@ -252,41 +502,6 @@ constexpr std::string_view type_name()
 }
 namespace sopho
 {
-    namespace detail
-    {
-        // Declaration: Map takes a Mapper template and a Tuple type
-        template <template <typename> class Mapper, typename Tuple>
-        struct MapImpl;
-        // Specialization: Unpack the tuple types (Ts...), apply Mapper to each, repack.
-        template <template <typename> class Mapper, typename... Ts>
-        struct MapImpl<Mapper, std::tuple<Ts...>>
-        {
-            // The "return value" of a metafunction is usually defined as 'type'
-            using type = std::tuple<Mapper<Ts>...>;
-        };
-    } // namespace detail
-    // Helper alias for cleaner syntax (C++14 style aliases)
-    template <template <typename> class Mapper, typename Tuple>
-    using Map = typename detail::MapImpl<Mapper, Tuple>::type;
-    namespace detail
-    {
-        template <template <typename, typename> typename Folder, typename Value, typename Tuple>
-        struct FoldlImpl;
-        template <template <typename, typename> typename Folder, typename Value, typename T, typename... Ts>
-        struct FoldlImpl<Folder, Value, std::tuple<T, Ts...>>
-        {
-            // The "return value" of a metafunction is usually defined as 'type'
-            using type = typename FoldlImpl<Folder, typename Folder<Value, T>::type, std::tuple<Ts...>>::type;
-        };
-        template <template <typename, typename> typename Folder, typename Value>
-        struct FoldlImpl<Folder, Value, std::tuple<>>
-        {
-            // The "return value" of a metafunction is usually defined as 'type'
-            using type = Value;
-        };
-    } // namespace detail
-    template <template <typename, typename> class Folder, typename Tuple, typename Value>
-    using Foldl = typename detail::FoldlImpl<Folder, Tuple, Value>::type;
     // Generic detection idiom core
     template <typename, template <typename> class, typename = void>
     struct is_detected : std::false_type
@@ -315,6 +530,11 @@ namespace sopho
             return Context::build_prefix.append(source.template strip_suffix<4>().append(Context::obj_postfix));
         }
         template <typename Target>
+        struct CxxBuilderWrapper
+        {
+            using type = CxxBuilder<Target>;
+        };
+        template <typename Target>
         struct CxxBuilder
         {
             template <typename L, typename R>
@@ -334,11 +554,16 @@ namespace sopho
             {
                 static void build() {}
             };
-            using DependentBuilder = Foldl<BuildFolder, DumbBuilder, Map<CxxBuilder, typename Target::Dependent>>;
+            using DependentBuilder =
+                Foldl<BuildFolder, DumbBuilder, Map<CxxBuilderWrapper, typename Target::Dependent>>;
             template <typename T>
             struct SourceToTarget
             {
-                constexpr static auto target = source_to_target(T::source);
+                struct Result
+                {
+                    constexpr static auto target = source_to_target(T::source);
+                };
+                using type = Result;
             };
             template <typename L, typename R>
             struct TargetStringFolder
