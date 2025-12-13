@@ -77,6 +77,12 @@ namespace sopho
         }
 
         template <typename Target>
+        struct CxxBuilderWrapper
+        {
+            using type = CxxBuilder<Target>;
+        };
+
+        template <typename Target>
         struct CxxBuilder
         {
 
@@ -99,12 +105,18 @@ namespace sopho
                 static void build() {}
             };
 
-            using DependentBuilder = Foldl<BuildFolder, DumbBuilder, Map<CxxBuilder, typename Target::Dependent>>;
+            using DependentBuilder =
+                Foldl<BuildFolder, DumbBuilder, Map<CxxBuilderWrapper, typename Target::Dependent>>;
 
             template <typename T>
             struct SourceToTarget
             {
+                struct Result
+                {
+
                 constexpr static auto target = source_to_target(T::source);
+                };
+                using type = Result;
             };
 
             template <typename L, typename R>

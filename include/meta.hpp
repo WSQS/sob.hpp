@@ -17,14 +17,14 @@ namespace sopho
         struct MapImpl<Mapper, std::tuple<Ts...>>
         {
             // The "return value" of a metafunction is usually defined as 'type'
-            using type = std::tuple<Mapper<Ts>...>;
+            using type = std::tuple<typename Mapper<Ts>::type...>;
         };
 
         template <template <typename> class Mapper, typename... Ts>
         struct MapImpl<Mapper, std::variant<Ts...>>
         {
             // The "return value" of a metafunction is usually defined as 'type'
-            using type = std::variant<Mapper<Ts>...>;
+            using type = std::variant<typename Mapper<Ts>::type...>;
         };
     } // namespace detail
 
