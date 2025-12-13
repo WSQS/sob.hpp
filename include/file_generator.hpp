@@ -1,5 +1,4 @@
 #pragma once
-#include <cassert>
 #include <cstdint>
 #include <deque>
 #include <filesystem>
@@ -18,7 +17,7 @@ namespace sopho
     std::string read_file(std::filesystem::path fs_path)
     {
         std::ifstream file_stream(fs_path, std::ios::binary);
-        assert(file_stream.is_open());
+        SOPHO_ASSERT(file_stream.is_open(), "open file failed, file name:", fs_path.string());
         const auto file_size = std::filesystem::file_size(fs_path);
 
         std::string content;
@@ -123,7 +122,7 @@ namespace sopho
         result.emplace_back(context.file_content.back());
 
         std::filesystem::path fs_path = file_path;
-        assert(std::filesystem::exists(fs_path));
+        SOPHO_ASSERT(std::filesystem::exists(fs_path), "file not exist ", fs_path.string());
         auto [iter, inserted] = context.file_entries.emplace(make_entry(fs_path));
 
         if (!inserted)
@@ -155,7 +154,7 @@ namespace sopho
                 {
                     line_content = line_content.substr(1);
                     auto index = line_content.find('>');
-                    assert(index != std::string_view::npos);
+                    SOPHO_ASSERT(index != std::string_view::npos, "find > failed");
                     auto file_name = line_content.substr(0, index);
                     if (context.std_header.find(std::string(file_name)) != context.std_header.end())
                     {
@@ -169,7 +168,7 @@ namespace sopho
                 {
                     line_content = line_content.substr(1);
                     auto index = line_content.find('"');
-                    assert(index != std::string_view::npos);
+                    SOPHO_ASSERT(index != std::string_view::npos, "find \" failed");
                     std::string file_name{line_content.substr(0, index)};
                     std::filesystem::path new_fs_path = fs_path.parent_path() / file_name;
                     if (!std::filesystem::exists(new_fs_path))
@@ -208,11 +207,11 @@ namespace sopho
         Context context{};
         std::filesystem::path fs_path = file_path;
         SOPHO_VALUE(fs_path);
-        SOPHO_ASSERT(std::filesystem::exists(fs_path),"file not exist");
+        SOPHO_ASSERT(std::filesystem::exists(fs_path), "file not exist");
         context.include_path = fs_path.parent_path();
         auto lines = collect_file(file_path, context);
         std::ofstream out("sob.hpp", std::ios::binary);
-        assert(out.is_open());
+        SOPHO_ASSERT(out.is_open(), "open file failed");
 
         for (auto sv : lines)
         {
