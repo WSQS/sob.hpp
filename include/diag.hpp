@@ -106,7 +106,7 @@ namespace sopho
 
     struct StackScope
     {
-        StackInfo* p_stack_info;
+        StackInfo* p_stack_info{};
         StackScope(const char* file_name, const char* function_name, std::uint32_t line_number)
         {
             StackInfo stack_info{};
