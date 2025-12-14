@@ -608,7 +608,7 @@ namespace sopho
                     auto target = source_to_target(Target::source);
                     ss << " -c " << Target::source.view() << " -o " << target.view();
                     std::filesystem::path target_path{target.view()};
-                    std::filesystem::create_directories(target_path);
+                    std::filesystem::create_directories(target_path.parent_path());
                     if constexpr (has_cxxflags_v<Context>)
                     {
                         for (const auto& flag : Context::cxxflags)
