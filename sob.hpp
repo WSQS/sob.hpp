@@ -527,6 +527,10 @@ namespace sopho
     // Final trait: has_source_v<T>
     template <typename T>
     inline constexpr bool has_source_v = is_detected_v<T, detect_source>;
+    template <typename T>
+    using detect_ldflags = decltype(std::declval<T&>().ldflags);
+    template <typename T>
+    inline constexpr bool has_ldflags_v = is_detected_v<T, detect_ldflags>;
     template <typename Context>
     struct CxxToolchain
     {
@@ -605,6 +609,13 @@ namespace sopho
                                   "Link target must have dependencies (object files)");
                     ss << DependentNameCollector::target.view();
                     ss << " -o " << Target::target.view();
+                    if constexpr (has_ldflags_v<Context>)
+                    {
+                        for (const auto& flag : Context::ldflags)
+                        {
+                            ss << " " << flag;
+                        }
+                    }
                 }
                 command = ss.str();
                 std::cout << type_name<Target>() << ":" << command << std::endl;
