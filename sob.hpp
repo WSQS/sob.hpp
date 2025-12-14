@@ -1,6 +1,7 @@
 // include/sob.hpp
 #include <cstddef>
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <string_view>
@@ -9,7 +10,6 @@
 #include <utility>
 // include/diag.hpp
 #include <cstdint>
-#include <filesystem>
 #include <functional>
 #include <list>
 #include <map>
@@ -605,7 +605,10 @@ namespace sopho
                 if constexpr (has_source_v<Target>)
                 {
                     static_assert(!Target::source.view().empty(), "Source file cannot be empty");
-                    ss << " -c " << Target::source.view() << " -o " << source_to_target(Target::source).view();
+                    auto target = source_to_target(Target::source);
+                    ss << " -c " << Target::source.view() << " -o " << target.view();
+                    std::filesystem::path target_path{target.view()};
+                    std::filesystem::create_directories(target_path);
                     if constexpr (has_cxxflags_v<Context>)
                     {
                         for (const auto& flag : Context::cxxflags)
