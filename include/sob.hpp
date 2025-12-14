@@ -69,6 +69,12 @@ namespace sopho
     template <typename T>
     inline constexpr bool has_ldflags_v = is_detected_v<T, detect_ldflags>;
 
+    template <typename T>
+    using detect_cxxflags = decltype(std::declval<T&>().cxxflags);
+
+    template <typename T>
+    inline constexpr bool has_cxxflags_v = is_detected_v<T, detect_cxxflags>;
+
     template <typename Context>
     struct CxxToolchain
     {
@@ -156,6 +162,14 @@ namespace sopho
                     static_assert(!Target::source.view().empty(), "Source file cannot be empty");
 
                     ss << " -c " << Target::source.view() << " -o " << source_to_target(Target::source).view();
+
+                    if constexpr (has_cxxflags_v<Context>)
+                    {
+                        for (const auto& flag : Context::cxxflags)
+                        {
+                            ss << " " << flag;
+                        }
+                    }
                 }
                 else
                 {
