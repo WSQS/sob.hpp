@@ -73,12 +73,12 @@ namespace sopho
     using Foldl = typename detail::FoldlImpl<Folder, Value, List>::type;
 } // namespace sopho
 // include/diag.hpp
-#define JOIN2(a, b) a##b
-#define SOPHO_DETAIL_JOIN2(a, b) JOIN2(a, b)
+#define SOPHO_DETAIL_JOIN2_IMPL(a, b) a##b
+#define SOPHO_DETAIL_JOIN2(a, b) SOPHO_DETAIL_JOIN2_IMPL(a, b)
 #define SOPHO_STACK()                                                                                                  \
-    StackScope SOPHO_DETAIL_JOIN2(_sopho_stack_scope_, __COUNTER__) { __FILE__, __func__, __LINE__ }
+    ::sopho::StackScope SOPHO_DETAIL_JOIN2(_sopho_stack_scope_, __COUNTER__) { __FILE__, __func__, __LINE__ }
 #define SOPHO_VALUE(value)                                                                                             \
-    StackValue SOPHO_DETAIL_JOIN2(_sopho_stack_value_, __COUNTER__) { std::string(#value), value }
+    ::sopho::StackValue SOPHO_DETAIL_JOIN2(_sopho_stack_value_, __COUNTER__) { std::string(#value), value }
 #define SOPHO_SOURCE_LOCATION                                                                                          \
     ::sopho::SourceLocation { __FILE__, __func__, static_cast<std::uint32_t>(__LINE__) }
 // expr + variadic msg parts (at least one msg token is required by your convention)
@@ -156,7 +156,7 @@ namespace sopho
     };
     struct StackScope
     {
-        StackInfo* p_stack_info;
+        StackInfo* p_stack_info{};
         StackScope(const char* file_name, const char* function_name, std::uint32_t line_number)
         {
             StackInfo stack_info{};
