@@ -73,6 +73,24 @@ namespace sopho
     using Foldl = typename detail::FoldlImpl<Folder, Value, List>::type;
 } // namespace sopho
 // include/diag.hpp
+#define SOPHO_DETAIL_JOIN2_IMPL(a, b) a##b
+#define SOPHO_DETAIL_JOIN2(a, b) SOPHO_DETAIL_JOIN2_IMPL(a, b)
+#define SOPHO_STACK()                                                                                                  \
+    ::sopho::StackScope SOPHO_DETAIL_JOIN2(_sopho_stack_scope_, __COUNTER__) { __FILE__, __func__, __LINE__ }
+#define SOPHO_VALUE(value)                                                                                             \
+    ::sopho::StackValue SOPHO_DETAIL_JOIN2(_sopho_stack_value_, __COUNTER__) { std::string(#value), value }
+#define SOPHO_SOURCE_LOCATION                                                                                          \
+    ::sopho::SourceLocation { __FILE__, __func__, static_cast<std::uint32_t>(__LINE__) }
+// expr + variadic msg parts (at least one msg token is required by your convention)
+#define SOPHO_ASSERT(expr, ...)                                                                                        \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(expr))                                                                                                   \
+        {                                                                                                              \
+            ::sopho::assert_fail(#expr, ::sopho::build_message(__VA_ARGS__), SOPHO_SOURCE_LOCATION);                   \
+        }                                                                                                              \
+    }                                                                                                                  \
+    while (0)
 namespace sopho
 {
     struct SourceLocation
@@ -86,6 +104,15 @@ namespace sopho
     {
         using type = std::reference_wrapper<const T>;
     };
+    [[noreturn]] inline void assert_fail(std::string_view expr, std::string msg, SourceLocation loc);
+    // Build message only on failure path.
+    template <class... Args>
+    inline std::string build_message(Args&&... args)
+    {
+        std::ostringstream os;
+        (os << ... << std::forward<Args>(args));
+        return os.str();
+    }
     using StackValueReference =
         Map<ReferenceWrapper, std::variant<std::int64_t, std::uint64_t, double, std::string, std::filesystem::path>>;
     struct StackInfo
@@ -129,15 +156,21 @@ namespace sopho
     };
     struct StackScope
     {
+        StackInfo* p_stack_info{};
         StackScope(const char* file_name, const char* function_name, std::uint32_t line_number)
         {
             StackInfo stack_info{};
             stack_info.source_location.file_name = file_name;
             stack_info.source_location.function_name = function_name;
             stack_info.source_location.line_number = line_number;
-            StackInfoInstance::get().stack_infos.emplace_front(stack_info);
+            p_stack_info = &StackInfoInstance::get().stack_infos.emplace_front(stack_info);
         }
-        ~StackScope() { StackInfoInstance::get().stack_infos.pop_front(); }
+        ~StackScope()
+        {
+            SOPHO_ASSERT(!StackInfoInstance::get().stack_infos.empty(), "Stack has been cleared");
+            SOPHO_ASSERT(&StackInfoInstance::get().stack_infos.front() == p_stack_info, "Stack Corrupted");
+            StackInfoInstance::get().stack_infos.pop_front();
+        }
         StackScope(const StackScope&) = delete;
         StackScope& operator=(const StackScope&) = delete;
         StackScope(StackScope&&) = delete;
@@ -157,14 +190,6 @@ namespace sopho
         StackValue(StackValue&&) = delete;
         StackValue& operator=(StackValue&&) = delete;
     };
-    // Build message only on failure path.
-    template <class... Args>
-    inline std::string build_message(Args&&... args)
-    {
-        std::ostringstream os;
-        (os << ... << std::forward<Args>(args));
-        return os.str();
-    }
     void dump_callstack(std::ostringstream& ss)
     {
         auto& infos = StackInfoInstance::get().stack_infos;
@@ -177,6 +202,7 @@ namespace sopho
             {
                 ss << "name:" << key << " value:" << stack_value_to_string(value) << std::endl;
             }
+            ++size;
         }
     }
     [[noreturn]] inline void assert_fail(std::string_view expr, std::string msg, SourceLocation loc)
@@ -194,24 +220,6 @@ namespace sopho
         std::cerr.flush();
         std::abort();
     }
-#define JOIN2(a, b) a##b
-#define SOPHO_DETAIL_JOIN2(a, b) JOIN2(a, b)
-#define SOPHO_STACK()                                                                                                  \
-    StackScope SOPHO_DETAIL_JOIN2(_sopho_stack_scope_, __COUNTER__) { __FILE__, __func__, __LINE__ }
-#define SOPHO_VALUE(value)                                                                                             \
-    StackValue SOPHO_DETAIL_JOIN2(_sopho_stack_value_, __COUNTER__) { std::string(#value), value }
-#define SOPHO_SOURCE_LOCATION                                                                                          \
-    ::sopho::SourceLocation { __FILE__, __func__, static_cast<std::uint32_t>(__LINE__) }
-// expr + variadic msg parts (at least one msg token is required by your convention)
-#define SOPHO_ASSERT(expr, ...)                                                                                        \
-    do                                                                                                                 \
-    {                                                                                                                  \
-        if (!(expr))                                                                                                   \
-        {                                                                                                              \
-            ::sopho::assert_fail(#expr, ::sopho::build_message(__VA_ARGS__), SOPHO_SOURCE_LOCATION);                   \
-        }                                                                                                              \
-    }                                                                                                                  \
-    while (0)
 } // namespace sopho
 // include/sob.hpp
 // include/file_generator.hpp
@@ -519,6 +527,10 @@ namespace sopho
     // Final trait: has_source_v<T>
     template <typename T>
     inline constexpr bool has_source_v = is_detected_v<T, detect_source>;
+    template <typename T>
+    using detect_ldflags = decltype(std::declval<T&>().ldflags);
+    template <typename T>
+    inline constexpr bool has_ldflags_v = is_detected_v<T, detect_ldflags>;
     template <typename Context>
     struct CxxToolchain
     {
@@ -597,6 +609,13 @@ namespace sopho
                                   "Link target must have dependencies (object files)");
                     ss << DependentNameCollector::target.view();
                     ss << " -o " << Target::target.view();
+                    if constexpr (has_ldflags_v<Context>)
+                    {
+                        for (const auto& flag : Context::ldflags)
+                        {
+                            ss << " " << flag;
+                        }
+                    }
                 }
                 command = ss.str();
                 std::cout << type_name<Target>() << ":" << command << std::endl;
