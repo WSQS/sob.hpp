@@ -163,7 +163,7 @@ namespace sopho
                     static_assert(!Target::source.view().empty(), "Source file cannot be empty");
 
                     auto target = source_to_target(Target::source);
-                    ss << " -c " << Target::source.view() << " -o " << target.view();
+                    ss << " -c " << Target::source.view() << Context::obj_prefix.view() << target.view();
                     std::filesystem::path target_path{target.view()};
                     std::filesystem::create_directories(target_path.parent_path());
 
@@ -181,7 +181,7 @@ namespace sopho
                                   "Link target must have dependencies (object files)");
 
                     ss << DependentNameCollector::target.view();
-                    ss << " -o " << Target::target.view();
+                    ss << Context::bin_prefix.view() << Target::target.view();
                     if constexpr (has_ldflags_v<Context>)
                     {
                         for (const auto& flag : Context::ldflags)
