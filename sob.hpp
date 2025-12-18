@@ -535,6 +535,22 @@ namespace sopho
     using detect_cxxflags = decltype(std::declval<T&>().cxxflags);
     template <typename T>
     inline constexpr bool has_cxxflags_v = is_detected_v<T, detect_cxxflags>;
+    template <typename T>
+    using detect_dependent_type = typename T::Dependent;
+    template <typename T>
+    inline constexpr bool has_dependent_v = is_detected_v<T, detect_dependent_type>;
+    template <typename T, typename = void>
+    struct dependent_or_empty
+    {
+        using type = std::tuple<>;
+    };
+    template <typename T>
+    struct dependent_or_empty<T, std::void_t<typename T::Dependent>>
+    {
+        using type = typename T::Dependent;
+    };
+    template <typename T>
+    using dependent_or_empty_t = typename dependent_or_empty<T>::type;
     template <typename Context>
     struct CxxToolchain
     {
@@ -595,7 +611,7 @@ namespace sopho
                 static constexpr StaticString target{""};
             };
             using DependentNameCollector =
-                Foldl<TargetStringFolder, DumbTargetString, Map<SourceToTarget, typename Target::Dependent>>;
+                Foldl<TargetStringFolder, DumbTargetString, Map<SourceToTarget, dependent_or_empty_t<Target>>>;
             static void build()
             {
                 DependentBuilder::build();
