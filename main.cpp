@@ -48,7 +48,6 @@ struct ClContext
 
 struct MainSource
 {
-    using Dependent = std::tuple<>;
     static constexpr sopho::StaticString source{"main.cpp"};
 };
 struct Main
