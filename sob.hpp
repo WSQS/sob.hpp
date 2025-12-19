@@ -587,7 +587,7 @@ namespace sopho
                 static void build() {}
             };
             using DependentBuilder =
-                Foldl<BuildFolder, DumbBuilder, Map<CxxBuilderWrapper, typename Target::Dependent>>;
+                Foldl<BuildFolder, DumbBuilder, Map<CxxBuilderWrapper, dependent_or_empty_t<Target>>>;
             template <typename T>
             struct SourceToTarget
             {
