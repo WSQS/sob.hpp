@@ -7,3 +7,7 @@ Sophomore's Build Tool
 Core Principle: A C++ No Build Tool That Leverages C++ Features
 
 Each build artifact (source file, object file, executable) is represented as a distinct C++ struct.
+
+## Reference
+
+- [tsoding/nob.h](https://github.com/tsoding/nob.h)
