@@ -1,6 +1,3 @@
-#include <array>
-#include <string_view>
-#include <tuple>
 #include "sob.hpp"
 
 #ifdef _MSVC_LANG
@@ -57,9 +54,9 @@ struct Main
 };
 
 #if defined(_MSC_VER)
-    using CxxContext = ClContext;
+using CxxContext = ClContext;
 #elif defined(__GNUC__)
-    using CxxContext = GxxContext;
+using CxxContext = GxxContext;
 #else
 #endif
 
@@ -67,6 +64,8 @@ int main()
 {
     sopho::single_header_generator("include/sob.hpp");
     std::cout << get_cpp_standard_name() << std::endl;
-    sopho::CxxToolchain<CxxContext>::CxxBuilder<Main>::build();
+    auto commands = sopho::CxxToolchain<CxxContext>::CxxBuilder<Main>::build();
+    sopho::write_compile_commands_json("compile_commands.json", commands);
+
     return 0;
 }

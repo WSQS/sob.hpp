@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string_view>
@@ -225,7 +226,6 @@ namespace sopho
 // include/sob.hpp
 // include/file_generator.hpp
 #include <deque>
-#include <fstream>
 #include <memory>
 #include <set>
 // include/file_generator.hpp
@@ -516,6 +516,29 @@ namespace sopho
         std::vector<std::string> arguments{};
         std::string file{};
     };
+    inline void write_compile_commands_json(const std::string& path, const std::vector<CompileCommand>& commands)
+    {
+        std::ofstream out(path);
+        out << "[\n";
+        for (size_t i = 0; i < commands.size(); ++i)
+        {
+            const auto& cmd = commands[i];
+            out << "  {\n";
+            out << "    \"directory\": \"" << cmd.directory << "\",\n";
+            out << "    \"file\": \"" << cmd.file << "\",\n";
+            out << "    \"arguments\": [";
+            for (size_t j = 0; j < cmd.arguments.size(); ++j)
+            {
+                out << "\"" << cmd.arguments[j] << "\"";
+                if (j + 1 < cmd.arguments.size()) out << ", ";
+            }
+            out << "]\n";
+            out << "  }";
+            if (i + 1 < commands.size()) out << ",";
+            out << "\n";
+        }
+        out << "]\n";
+    }
     // Generic detection idiom core
     template <typename, template <typename> class, typename = void>
     struct is_detected : std::false_type
