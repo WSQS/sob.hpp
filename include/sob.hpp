@@ -218,6 +218,15 @@ namespace sopho
                 std::system(command.data());
                 std::cout << type_name<Target>() << ":finished" << std::endl;
             }
+
+            struct Args{
+                static constexpr auto value = 123;
+            };
+
+            struct Command
+            {
+                static constexpr sopho::PushBack<std::tuple<Args>, std::string_view> args{};
+            };
         };
     };
 

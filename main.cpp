@@ -1,7 +1,8 @@
 #include <array>
 #include <string_view>
 #include <tuple>
-#include "sob.hpp"
+#include "include/static_string.hpp"
+#include "include/sob.hpp"
 
 #ifdef _MSVC_LANG
 #define SOPHO_CPP_VER _MSVC_LANG
@@ -35,6 +36,10 @@ struct GxxContext
     static constexpr sopho::StaticString bin_prefix{" -o "};
     static constexpr sopho::StaticString build_prefix{"build/"};
 };
+template <auto S>
+struct X {
+    static constexpr auto value = S.view();
+};
 
 struct ClContext
 {
@@ -43,7 +48,7 @@ struct ClContext
     static constexpr sopho::StaticString obj_postfix{".obj"};
     static constexpr sopho::StaticString bin_prefix{" /Fe:"};
     static constexpr sopho::StaticString build_prefix{"build/"};
-    static constexpr std::array<std::string_view, 1> cxxflags{"/std:c++17"};
+    static constexpr std::tuple<X<sopho::StaticString{"123"}>> cxxflags{};
 };
 
 struct MainSource

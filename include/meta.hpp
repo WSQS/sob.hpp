@@ -69,4 +69,37 @@ namespace sopho
 
     template <template <typename, typename> class Folder, typename Value, typename List>
     using Foldl = typename detail::FoldlImpl<Folder, Value, List>::type;
+
+    namespace detail
+    {
+        template <typename List, typename NewType>
+        struct PushBackImpl;
+
+        template <typename... Ts, typename NewType>
+        struct PushBackImpl<std::tuple<Ts...>, NewType>
+        {
+            using type = std::tuple<Ts..., NewType>;
+        };
+
+        template <typename NewType>
+        struct PushBackImpl<std::tuple<>, NewType>
+        {
+            using type = std::tuple<NewType>;
+        };
+
+        template <typename... Ts, typename NewType>
+        struct PushBackImpl<std::variant<Ts...>, NewType>
+        {
+            using type = std::variant<Ts..., NewType>;
+        };
+
+        template <typename NewType>
+        struct PushBackImpl<std::variant<>, NewType>
+        {
+            using type = std::variant<NewType>;
+        };
+    } // namespace detail
+
+    template <typename List, typename NewType>
+    using PushBack = typename detail::PushBackImpl<List, NewType>::type;
 } // namespace sopho
