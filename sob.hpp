@@ -8,6 +8,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vector>
 // include/diag.hpp
 #include <cstdint>
 #include <functional>
@@ -227,7 +228,6 @@ namespace sopho
 #include <fstream>
 #include <memory>
 #include <set>
-#include <vector>
 // include/file_generator.hpp
 namespace sopho
 {
@@ -510,6 +510,12 @@ constexpr std::string_view type_name()
 }
 namespace sopho
 {
+    struct CompileCommand
+    {
+        std::string directory{};
+        std::vector<std::string> arguments{};
+        std::string file{};
+    };
     // Generic detection idiom core
     template <typename, template <typename> class, typename = void>
     struct is_detected : std::false_type
@@ -574,17 +580,21 @@ namespace sopho
             {
                 struct Builder
                 {
-                    static void build()
+                    static std::vector<CompileCommand> build()
                     {
-                        L::build();
-                        R::build();
+                        std::vector<CompileCommand> result;
+                        auto left = L::build();
+                        auto right = R::build();
+                        result.insert(result.end(), left.begin(), left.end());
+                        result.insert(result.end(), right.begin(), right.end());
+                        return result;
                     }
                 };
                 using type = Builder;
             };
             struct DumbBuilder
             {
-                static void build() {}
+                static std::vector<CompileCommand> build() { return {}; }
             };
             using DependentBuilder =
                 Foldl<BuildFolder, DumbBuilder, Map<CxxBuilderWrapper, dependent_or_empty_t<Target>>>;
@@ -612,17 +622,23 @@ namespace sopho
             };
             using DependentNameCollector =
                 Foldl<TargetStringFolder, DumbTargetString, Map<SourceToTarget, dependent_or_empty_t<Target>>>;
-            static void build()
+            static std::vector<CompileCommand> build()
             {
-                DependentBuilder::build();
+                std::vector<CompileCommand> commands = DependentBuilder::build();
                 std::string command{};
+                std::vector<std::string> command_parts;
                 std::stringstream ss{};
                 ss << Context::cxx;
+                command_parts.push_back(std::string{Context::cxx});
                 if constexpr (has_source_v<Target>)
                 {
                     static_assert(!Target::source.view().empty(), "Source file cannot be empty");
                     auto target = source_to_target(Target::source);
                     ss << " -c " << Target::source.view() << Context::obj_prefix.view() << target.view();
+                    command_parts.push_back("-c");
+                    command_parts.push_back(std::string(Target::source.view()));
+                    command_parts.push_back(std::string(Context::obj_prefix.view()));
+                    command_parts.push_back(std::string(target.view()));
                     std::filesystem::path target_path{target.view()};
                     std::filesystem::create_directories(target_path.parent_path());
                     if constexpr (has_cxxflags_v<Context>)
@@ -630,8 +646,11 @@ namespace sopho
                         for (const auto& flag : Context::cxxflags)
                         {
                             ss << " " << flag;
+                            command_parts.push_back(std::string(flag));
                         }
                     }
+                    commands.emplace_back(CompileCommand{std::filesystem::current_path().string(), command_parts,
+                                                         std::string{Target::source.view()}});
                 }
                 else
                 {
@@ -651,6 +670,7 @@ namespace sopho
                 std::cout << type_name<Target>() << ":" << command << std::endl;
                 std::system(command.data());
                 std::cout << type_name<Target>() << ":finished" << std::endl;
+                return commands;
             }
         };
     };
