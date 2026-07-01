@@ -43,15 +43,8 @@ struct ClContext
     static constexpr std::array<std::string_view, 1> cxxflags{"/std:c++17"};
 };
 
-struct MainSource
-{
-    static constexpr sopho::StaticString source{"main.cpp"};
-};
-struct Main
-{
-    using Dependent = std::tuple<MainSource>;
-    static constexpr sopho::StaticString target{"main"};
-};
+using MainSource = sopho::Source<sopho::StaticString{"main.cpp"}>;
+using Main = sopho::Target<std::tuple<MainSource>, sopho::StaticString{"main"}>;
 
 #if defined(_MSC_VER)
 using CxxContext = ClContext;
