@@ -420,66 +420,63 @@ namespace sopho
     template <std::size_t Size>
     struct StaticString
     {
-        std::array<char, Size> raw{};
+        std::array<char, Size> data{};
         constexpr StaticString() = default;
         constexpr StaticString(const char (&str)[Size + 1])
         {
             for (std::size_t i = 0; i < Size; ++i)
             {
-                raw[i] = str[i];
+                data[i] = str[i];
             }
         }
+        constexpr bool operator==(const StaticString&) const = default;
         constexpr std::size_t size() const { return Size; }
-        constexpr std::string_view view() const { return std::string_view{raw.data(), size()}; }
-        constexpr char operator[](std::size_t idx) const { return raw[idx]; }
-        template <std::size_t M>
-        constexpr bool has_suffix(const StaticString<M>& suffix) const
-        {
-            // Case: Suffix is longer than the string -> definitely false
-            if (M > Size)
-            {
-                return false;
-            }
-            // Architecture Note: We implement manual loop instead of string_view::ends_with
-            // to ensure maximum compatibility with older C++ standards (C++14/17)
-            // and guarantee constexpr execution.
-            for (std::size_t i = 0; i < M; ++i)
-            {
-                if (raw[Size - M + i] != suffix[i])
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-        template <std::size_t M>
-        constexpr StaticString<Size - M> strip_suffix() const
-        {
-            static_assert(M <= Size, "Suffix is longer than the string itself");
-            StaticString<Size - M> result{};
-            for (std::size_t i = 0; i < Size - M; ++i)
-            {
-                result.raw[i] = raw[i];
-            }
-            return result;
-        }
-        template <std::size_t M>
-        constexpr StaticString<Size + M> append(StaticString<M> suffix) const
-        {
-            StaticString<Size + M> result{};
-            for (std::size_t i = 0; i < Size; ++i)
-            {
-                result.raw[i] = raw[i];
-            }
-            for (std::size_t i = 0; i < M; ++i)
-            {
-                result.raw[i + Size] = suffix[i];
-            }
-            return result;
-        }
+        constexpr std::string_view view() const { return std::string_view{data.data(), size()}; }
+        constexpr char operator[](std::size_t idx) const { return data[idx]; }
     };
     template <std::size_t N>
     StaticString(const char (&)[N]) -> StaticString<N - 1>;
+    template <std::size_t S, std::size_t M>
+    constexpr bool has_suffix(const StaticString<S>& str, const StaticString<M>& suffix)
+    {
+        if (M > S)
+        {
+            return false;
+        }
+        for (std::size_t i = 0; i < M; ++i)
+        {
+            if (str[S - M + i] != suffix[i])
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+    template <std::size_t M, std::size_t S>
+    constexpr StaticString<S - M> strip_suffix(const StaticString<S>& str, const StaticString<M>& suffix)
+    {
+        static_assert(M <= S, "Suffix is longer than the string itself");
+        StaticString<S - M> result{};
+        for (std::size_t i = 0; i < S - M; ++i)
+        {
+            result.data[i] = str[i];
+        }
+        return result;
+    }
+    template <std::size_t S, std::size_t M>
+    constexpr StaticString<S + M> append(const StaticString<S>& a, const StaticString<M>& b)
+    {
+        StaticString<S + M> result{};
+        for (std::size_t i = 0; i < S; ++i)
+        {
+            result.data[i] = a[i];
+        }
+        for (std::size_t i = 0; i < M; ++i)
+        {
+            result.data[i + S] = b[i];
+        }
+        return result;
+    }
 } // namespace sopho
 // include/sob.hpp
 template <class T>
@@ -530,11 +527,13 @@ namespace sopho
             for (size_t j = 0; j < cmd.arguments.size(); ++j)
             {
                 out << "\"" << cmd.arguments[j] << "\"";
-                if (j + 1 < cmd.arguments.size()) out << ", ";
+                if (j + 1 < cmd.arguments.size())
+                    out << ", ";
             }
             out << "]\n";
             out << "  }";
-            if (i + 1 < commands.size()) out << ",";
+            if (i + 1 < commands.size())
+                out << ",";
             out << "\n";
         }
         out << "]\n";
@@ -588,7 +587,8 @@ namespace sopho
         template <size_t Size>
         constexpr static auto source_to_target(StaticString<Size> source)
         {
-            return Context::build_prefix.append(source.template strip_suffix<4>().append(Context::obj_postfix));
+            return append(append(Context::build_prefix, strip_suffix(source, StaticString{".cpp"})),
+                          Context::obj_postfix);
         }
         template <typename Target>
         struct CxxBuilderWrapper
@@ -635,7 +635,7 @@ namespace sopho
             {
                 struct TargetString
                 {
-                    static constexpr auto target = L::target.append(StaticString(" ")).append(R::target);
+                    static constexpr auto target = append(append(L::target, StaticString(" ")), R::target);
                 };
                 using type = TargetString;
             };

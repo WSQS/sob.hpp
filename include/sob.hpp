@@ -66,11 +66,13 @@ namespace sopho
             for (size_t j = 0; j < cmd.arguments.size(); ++j)
             {
                 out << "\"" << cmd.arguments[j] << "\"";
-                if (j + 1 < cmd.arguments.size()) out << ", ";
+                if (j + 1 < cmd.arguments.size())
+                    out << ", ";
             }
             out << "]\n";
             out << "  }";
-            if (i + 1 < commands.size()) out << ",";
+            if (i + 1 < commands.size())
+                out << ",";
             out << "\n";
         }
         out << "]\n";
@@ -141,7 +143,8 @@ namespace sopho
         template <size_t Size>
         constexpr static auto source_to_target(StaticString<Size> source)
         {
-            return Context::build_prefix.append(source.template strip_suffix<4>().append(Context::obj_postfix));
+            return append(append(Context::build_prefix, strip_suffix(source, StaticString{".cpp"})),
+                          Context::obj_postfix);
         }
 
         template <typename Target>
@@ -196,7 +199,7 @@ namespace sopho
             {
                 struct TargetString
                 {
-                    static constexpr auto target = L::target.append(StaticString(" ")).append(R::target);
+                    static constexpr auto target = append(append(L::target, StaticString(" ")), R::target);
                 };
                 using type = TargetString;
             };
