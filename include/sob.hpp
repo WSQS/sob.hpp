@@ -92,6 +92,12 @@ namespace sopho
     template <typename T, template <typename> class Op>
     inline constexpr bool is_detected_v = is_detected<T, Op>::value;
 
+    template <StaticString S>
+    struct src
+    {
+        static constexpr auto source = S;
+    };
+
     // Expression template: get type of 'T::source' (works for static and non-static)
     template <typename T>
     using detect_source = decltype(std::declval<T&>().source);
